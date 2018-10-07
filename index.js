@@ -1,60 +1,76 @@
-
 const path = require('path')
+const expressEdge = require('express-edge')
 const express = require('express')
-const app = express()
+const mongoose = require('mongoose')
+const bodyParser = require('body-parser')
+const fileUpload = require('express-fileupload')
+
+const Post = require('./database/models/Post')
+
+const app = new express()
+
+mongoose.connect('mongodb://localhost/node-js-blog')
+
+app.use(fileUpload())
 
 app.use(express.static('public'))
+app.use(expressEdge)
 
-app.listen(3000, ()=> {
-    console.log('App listening on port 3000')
+app.set('views', `${__dirname}/views`)
+
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({extended: true}))
+
+app.get('/', async (req, res)=>{
+
+  //res.sendFile(path.resolve(__dirname, 'pages/index.html'))
+
+  const posts = await Post.find({})
+  console.log(posts)
+
+  res.render('index', {
+    posts
+  })
 })
 
-app.get('/about', (require,response) =>{
-    response.sendFile(path.resolve(__dirname, 'about.html'))
-})
-app.get('/contact', (require,response) =>{
-    response.sendFile(path.resolve(__dirname, 'contact.html'))
-})
-app.get('/', (req,res) =>{
-    res.sendFile(path.resolve(__dirname, 'index.html'))
+app.get('/about', (req, res)=>{
+  //res.sendFile(path.resolve(__dirname, 'pages/about.html'))
+  res.render('about')
 })
 
-/*
-app.get('/about', (require,response) =>{
-    response.send({
-        name: 'Leticia Saviani'
-    })
+app.get('/post/:id', async (req, res)=>{
+  //res.sendFile(path.resolve(__dirname, 'pages/post.html'))
+
+  const post = await Post.findById(req.params.id)
+
+  res.render('post', {
+    post
+  })
 })
 
-app.get('/', (require,response) =>{
-    response.json({
-        name: 'Taila Saviani'
-    })
-})*/
-
-/* const http = require('http')
-const fs = require('fs')
-
-const aboutPage = fs.readFileSync('about.html')
-const contactPage = fs.readFileSync('contact.html')
-const HomePage = fs.readFileSync('index.html')
-
-const server = http.createServer((request, response) => {
-    
-    if(request.url === '/about'){
-        return response.end(aboutPage)
-    }else if(request.url === '/contact'){
-        return response.end(contactPage)
-    }else if(request.url === '/'){
-        return response.end(HomePage)
-    }else{
-        response.writeHead(404)
-        response.end('THE PAGE WAS NOT FOUND')
-    }
-    
-
+app.get('/posts/new', (req, res)=>{
+  res.render('create')
 })
 
-server.listen(3000)
+app.post('/posts/store', (req, res)=>{
 
-*/
+  const { image } = req.files
+
+  image.mv(path.resolve(__dirname, 'public/posts', image.name), (error) =>{
+    Post.create({
+      ...req.body,
+      image: `/posts/${image.name}`
+    }, (error, post)=>{
+      res.redirect('/');
+    });  
+  })
+}); 
+
+app.get('/contact', (req, res)=>{
+  //res.sendFile(path.resolve(__dirname, 'pages/contact.html'))
+  res.render('contact')
+})  
+
+app.listen(4000, () => {
+  console.log('App listening on port 4000')
+})
